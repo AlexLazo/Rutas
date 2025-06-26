@@ -10,6 +10,13 @@ from functools import wraps
 from pathlib import Path
 import pytz
 
+def get_now():
+    """
+    Obtener fecha y hora actual en la zona horaria de Centroamérica.
+    Guatemala usa GMT-6, consistente en toda la aplicación.
+    """
+    return datetime.now(pytz.timezone('America/Guatemala'))
+
 app = Flask(__name__)
 app.secret_key = 'clave-secreta-rutas-2024'  # Cambiar en producción
 
@@ -96,7 +103,26 @@ class User(UserMixin):
 @login_manager.user_loader
 def load_user(user_id):
     """Cargar usuario desde la base de datos"""
+    # Asegurar que la base de datos exista antes de consultar
+    if not os.path.exists(DATABASE):
+        print("⚠️ Base de datos no encontrada, inicializando...")
+        init_db()
+    
     conn = get_db_connection()
+    
+    # Verificar que la tabla users existe
+    table_exists = conn.execute('''
+        SELECT count(name) FROM sqlite_master 
+        WHERE type='table' AND name='users'
+    ''').fetchone()[0]
+    
+    if table_exists == 0:
+        # La tabla no existe, inicializar la BD
+        conn.close()
+        print("⚠️ La tabla users no existe, inicializando base de datos...")
+        init_db()
+        conn = get_db_connection()
+    
     user_data = conn.execute(
         'SELECT * FROM users WHERE id = ? AND is_active = 1', 
         (user_id,)
@@ -122,10 +148,6 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
-
-def get_now():
-    """Obtener la hora actual en la zona horaria de Centroamérica (Guatemala)"""
-    return datetime.now(pytz.timezone('America/Guatemala'))
 
 def init_db():
     """Inicializar la base de datos"""
@@ -932,15 +954,34 @@ if __name__ == '__main__':
     print(f"🚀 Iniciando Sistema de Gestión de Rutas... [{now.strftime('%Y-%m-%d %H:%M:%S')} GMT-6]")
     print(f"📂 Base de datos: {DATABASE}")
     
-    # Inicializar base de datos
-    init_db()
-    
-    # Cargar rutas desde Excel si existe el archivo
-    if os.path.exists('DB_Rutas.xlsx'):
-        print("📋 Cargando rutas desde Excel...")
-        load_rutas_from_excel()
+    # Verificar si existe init_database.py para usar
+    if os.path.exists('init_database.py'):
+        print("📋 Usando script init_database.py para inicialización...")
+        # Asegurarse de que tenga permisos de ejecución
+        os.system("chmod +x init_database.py")
+        # Ejecutar el script de inicialización
+        os.system("python init_database.py")
     else:
-        print("⚠️ Archivo DB_Rutas.xlsx no encontrado")
+        # Fallback al método interno
+        print("⚠️ Script init_database.py no encontrado, usando método interno...")
+        # Inicializar base de datos
+        init_db()
+        
+        # Cargar rutas desde Excel si existe el archivo
+        if os.path.exists('DB_Rutas.xlsx'):
+            print("📋 Cargando rutas desde Excel...")
+            load_rutas_from_excel()
+        else:
+            print("⚠️ Archivo DB_Rutas.xlsx no encontrado")
+    
+    # Verificar que las tablas existen después de la inicialización
+    conn = get_db_connection()
+    tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
+    print(f"📊 Tablas en la base de datos: {[t[0] for t in tables]}")
+    
+    users_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    print(f"👤 Usuarios en la base de datos: {users_count}")
+    conn.close()
     
     print("🌐 Aplicación lista - puedes acceder en:")
     port = int(os.environ.get('PORT', 5000))
