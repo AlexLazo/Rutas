@@ -4,18 +4,25 @@
 echo "🔧 Iniciando aplicación en Railway..."
 
 # Verificar que existe el archivo DB_Rutas.xlsx
+echo "🔍 Buscando archivo DB_Rutas.xlsx..."
 if [ -f "DB_Rutas.xlsx" ]; then
     echo "✅ Archivo DB_Rutas.xlsx encontrado"
     echo "📊 Tamaño del archivo: $(du -h DB_Rutas.xlsx | cut -f1)"
     echo "📅 Fecha de modificación: $(stat -c %y DB_Rutas.xlsx)"
-    echo "📋 Contenido del Excel (primeras 5 filas):"
-    head -n 5 DB_Rutas.xlsx || echo "  (No se puede mostrar contenido binario)"
+    echo "📋 Formato del archivo:"
+    file DB_Rutas.xlsx
+    echo "📋 Primeros bytes del archivo (para verificar que no está corrupto):"
+    hexdump -C DB_Rutas.xlsx | head -n 5
+    echo "📦 Copiando archivo a directorio actual (por si está en otra ubicación)"
+    cp -v DB_Rutas.xlsx ./DB_Rutas.xlsx || echo "⚠️ El archivo ya existe en el directorio actual"
 else
     echo "❌ ERROR: Archivo DB_Rutas.xlsx NO encontrado"
     echo "❌ La aplicación NO tendrá rutas disponibles"
     echo "❌ Por favor, SUBE el archivo DB_Rutas.xlsx a Railway"
     echo "📂 Contenido del directorio actual:"
     ls -la
+    echo "📂 Buscando archivos Excel en todo el sistema:"
+    find / -name "*.xlsx" -type f 2>/dev/null | head -n 10
 fi
 
 # Ejecutar la aplicación
@@ -23,6 +30,9 @@ echo "🚀 Ejecutando aplicación con Gunicorn..."
 python3 -c "import os; print(f'Python version: {os.popen(\"python3 --version\").read().strip()}')"
 python3 -c "import pandas; print(f'Pandas version: {pandas.__version__}')"
 echo "🔄 Inicializando base de datos antes de arrancar..."
+# Dar permisos de ejecución al script
+chmod +x init_database.py
+# Ejecutar el script de inicialización
 python3 init_database.py
 
 echo "🔄 Verificando tablas de la base de datos..."
