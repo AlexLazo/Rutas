@@ -54,7 +54,7 @@ def add_security_headers(response):
     # Content Security Policy (CSP) - Configurado para mejor seguridad
     csp_directives = [
         "default-src 'self'",
-        "script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com", 
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://code.jquery.com", 
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
         "img-src 'self' data:",
         "font-src 'self' https://cdnjs.cloudflare.com",
