@@ -12,6 +12,8 @@ services:
         value: /opt/render/project/src
       - key: TZ
         value: America/Guatemala
+      - key: PYTHON_VERSION
+        value: 3.11.8
     scaling:
       minInstances: 1
       maxInstances: 1
