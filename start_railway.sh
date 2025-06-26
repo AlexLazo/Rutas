@@ -23,36 +23,23 @@ echo "🚀 Ejecutando aplicación con Gunicorn..."
 python3 -c "import os; print(f'Python version: {os.popen(\"python3 --version\").read().strip()}')"
 python3 -c "import pandas; print(f'Pandas version: {pandas.__version__}')"
 echo "🔄 Inicializando base de datos antes de arrancar..."
+python3 init_database.py
+
+echo "🔄 Verificando tablas de la base de datos..."
 python3 -c "
 import sqlite3;
-import os;
-print('Inicializando base de datos...');
 conn = sqlite3.connect('sistema_rutas.db');
-conn.executescript('''
-CREATE TABLE IF NOT EXISTS rutas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ruta TEXT NOT NULL,
-    codigo TEXT,
-    placa TEXT,
-    supervisor TEXT,
-    contratista TEXT NOT NULL,
-    tipo TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS reportes_rutas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ruta_id INTEGER NOT NULL,
-    fecha TEXT, 
-    hora TEXT,
-    descripcion TEXT,
-    estado TEXT,
-    usuario_reporte TEXT,
-    FOREIGN KEY (ruta_id) REFERENCES rutas (id)
-);
-''');
-conn.commit();
+cursor = conn.cursor();
+tables = cursor.execute('SELECT name FROM sqlite_master WHERE type=\"table\";').fetchall();
+print(f'Tablas encontradas: {[t[0] for t in tables]}');
+rutas_count = cursor.execute('SELECT COUNT(*) FROM sqlite_master WHERE type=\"table\" AND name=\"rutas\";').fetchone()[0];
+if rutas_count == 0:
+    print('❌ CRÍTICO: La tabla \"rutas\" NO existe');
+else:
+    print('✅ Tabla \"rutas\" encontrada');
+    count = cursor.execute('SELECT COUNT(*) FROM rutas;').fetchone()[0];
+    print(f'📊 Hay {count} rutas en la base de datos');
 conn.close();
-print('✅ Base de datos inicializada correctamente');
 "
 
 # Para Railway, usamos Gunicorn para servir la aplicación

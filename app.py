@@ -3,170 +3,16 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import os
+import pandas as pd
 from datetime import datetime, time
 import json
 from functools import wraps
 from pathlib import Path
 
-# Importar pandas de manera opcional para evitar errores de Railway
-try:
-    import pandas as pd
-    PANDAS_AVAILABLE = True
-    print("✅ Pandas importado correctamente")
-except ImportError as e:
-    PANDAS_AVAILABLE = False
-    print(f"⚠️ Pandas no disponible: {e}")
-    print("⚠️ Funciones de Excel estarán limitadas")
-
-# Importar configuración para Railway
-try:
-    from config import get_port, get_debug_mode, print_env_info
-    RAILWAY_CONFIG_AVAILABLE = True
-except ImportError:
-    RAILWAY_CONFIG_AVAILABLE = False
-
-# Definir ruta de base de datos
-DATABASE = 'sistema_rutas.db'
-
-def init_db():
-    """Inicializar la base de datos"""
-    print(f"🔄 Inicializando base de datos en: {DATABASE}")
-    
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    
-    # Configurar SQLite para mejor rendimiento
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA synchronous=NORMAL")
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.execute("PRAGMA temp_store=MEMORY")
-    
-    # Crear tablas
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS rutas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ruta TEXT NOT NULL,
-            codigo TEXT,
-            placa TEXT,
-            supervisor TEXT,
-            contratista TEXT NOT NULL,
-            tipo TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS reportes_rutas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ruta_id INTEGER NOT NULL,
-            fecha TEXT, 
-            hora TEXT,
-            descripcion TEXT,
-            estado TEXT,
-            usuario_reporte TEXT,
-            FOREIGN KEY (ruta_id) REFERENCES rutas (id)
-        )
-    ''')
-    
-    # Crear tabla usuarios si no existe
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT,
-            password_hash TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'user',
-            is_active INTEGER DEFAULT 1,
-            last_login DATETIME,
-            created_by INTEGER
-        )
-    ''')
-    
-    # Crear usuario admin si no existe
-    admin = cursor.execute('SELECT id FROM users WHERE username = ?', ('admin',)).fetchone()
-    if not admin:
-        cursor.execute('''
-            INSERT INTO users (username, email, password_hash, role, is_active)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (
-            'admin', 
-            'admin@sistema-rutas.com', 
-            generate_password_hash('admin123'), 
-            'admin', 
-            1
-        ))
-        print("✅ Usuario admin creado")
-    
-    # No crear datos de ejemplo, usar exclusivamente el archivo Excel
-    rutas_count = cursor.execute('SELECT COUNT(*) FROM rutas').fetchone()[0]
-    if rutas_count == 0:
-        print("🔄 La base de datos no tiene rutas, se cargarán desde Excel posteriormente")
-    conn.commit()
-    conn.close()
-    print("✅ Base de datos inicializada")
-
 app = Flask(__name__)
 app.secret_key = 'clave-secreta-rutas-2024'  # Cambiar en producción
 
-# Configurar Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = 'Por favor inicie sesión para acceder a esta página.'
-login_manager.login_message_category = 'info'
-
-# Clase User para Flask-Login
-class User(UserMixin):
-    def __init__(self, id, username, email, role, active=True):
-        self.id = id
-        self.username = username
-        self.email = email
-        self.role = role
-        self._is_active = active
-    
-    @property
-    def is_active(self):
-        return self._is_active
-    
-    def get_id(self):
-        return str(self.id)
-    
-    def is_admin(self):
-        return self.role in ['admin', 'super_admin']
-    
-    def is_supervisor(self):
-        return self.role in ['supervisor', 'admin', 'super_admin']
-
-@login_manager.user_loader
-def load_user(user_id):
-    """Cargar usuario desde la base de datos"""
-    conn = get_db_connection()
-    user_data = conn.execute(
-        'SELECT * FROM users WHERE id = ? AND is_active = 1', 
-        (user_id,)
-    ).fetchone()
-    conn.close()
-    
-    if user_data:
-        return User(
-            id=user_data['id'],
-            username=user_data['username'],
-            email=user_data['email'],
-            role=user_data['role'],
-            active=user_data['is_active']
-        )
-    return None
-
-# Configuración de la base de datos
-DATABASE = 'sistema_rutas.db'
-
-def get_db_connection():
-    """Obtener conexión a la base de datos"""
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
-
+# Headers de seguridad para parecer sitio web corporativo normal
 @app.after_request
 def add_security_headers(response):
     """Agregar headers que hagan parecer el sitio como corporativo normal"""
@@ -203,10 +49,6 @@ def add_security_headers(response):
     response.headers['X-Authentication-Provider'] = 'ActiveDirectory-Enterprise'
     response.headers['X-Corporate-Gateway'] = 'CORP-DMZ-01'
     response.headers['X-Internal-Service'] = 'Route-Management-System'
-    
-    # Headers adicionales para Render.com
-    response.headers['X-Hosting-Platform'] = 'Render-Enterprise'
-    response.headers['X-Deployment-Environment'] = 'Corporate-Cloud'
     
     # Headers específicos para parecer legítimo
     response.headers['X-Division'] = 'Logistica-Distribucion'
@@ -373,195 +215,25 @@ def init_db():
             VALUES (?, ?, ?, ?)
         ''', ('admin', 'admin@sistema-rutas.com', admin_password_hash, 'super_admin'))
         
-        # Crear usuario admin si no existe
-        admin = cursor.execute('SELECT id FROM users WHERE username = ?', ('admin',)).fetchone()
-        if not admin:
-            cursor.execute('''
-                INSERT INTO users (username, email, password_hash, role, is_active)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (
-                'admin', 
-                'admin@sistema-rutas.com', 
-                generate_password_hash('admin123'), 
-                'admin', 
-                1
-            ))
-            print("✅ Usuario admin creado")
-    
-    conn.commit()
-    conn.close()
-
-def get_db_connection():
-    """Obtener conexión a la base de datos"""
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
-
-def init_db():
-    """Inicializar la base de datos"""
-    print(f"🔄 Inicializando base de datos en: {DATABASE}")
-    
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    
-    # Configurar SQLite para mejor rendimiento
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA synchronous=NORMAL")
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.execute("PRAGMA temp_store=MEMORY")
-    
-    # Tabla para almacenar datos de rutas (cargados desde Excel)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS rutas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ruta TEXT NOT NULL,
-            codigo TEXT,
-            placa TEXT,
-            supervisor TEXT,
-            contratista TEXT NOT NULL,
-            tipo TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Tabla para reportes de rutas diarios
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS reportes_rutas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            contratista TEXT NOT NULL,
-            ruta_id INTEGER NOT NULL,
-            ruta_codigo TEXT NOT NULL,
-            clientes_pendientes INTEGER NOT NULL DEFAULT 0,
-            cajas_camion INTEGER NOT NULL DEFAULT 0,
-            hora_aproximada_ingreso TIME NOT NULL,
-            ubicacion_exacta TEXT,
-            latitud REAL,
-            longitud REAL,
-            hora_exacta_envio DATETIME DEFAULT CURRENT_TIMESTAMP,
-            comentarios TEXT,
-            fecha_reporte DATE DEFAULT (date('now')),
-            hora_reporte DATETIME DEFAULT CURRENT_TIMESTAMP,
-            estado TEXT DEFAULT 'activo',
-            reportado_por TEXT,
-            FOREIGN KEY (ruta_id) REFERENCES rutas (id)
-        )
-    ''')
-    
-    # Tabla para usuarios del sistema
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'user',
-            is_active INTEGER DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_login DATETIME,
-            created_by INTEGER,
-            FOREIGN KEY (created_by) REFERENCES users (id)
-        )
-    ''')
-    
-    # Tabla para log de actividades
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS activity_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            action TEXT NOT NULL,
-            target_type TEXT,
-            target_id INTEGER,
-            details TEXT,
-            ip_address TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    ''')
-    
-    # Crear usuario administrador por defecto si no existe
-    existing_admin = cursor.execute(
-        'SELECT id FROM users WHERE username = ?', ('admin',)
-    ).fetchone()
-    
-    if not existing_admin:
-        admin_password_hash = generate_password_hash('admin123')
+        # Crear supervisor de ejemplo
+        supervisor_password_hash = generate_password_hash('supervisor123')
         cursor.execute('''
-            INSERT INTO users (username, email, password_hash, role)
-            VALUES (?, ?, ?, ?)
-        ''', ('admin', 'admin@sistema-rutas.com', admin_password_hash, 'super_admin'))
+            INSERT INTO users (username, email, password_hash, role, created_by)
+            VALUES (?, ?, ?, ?, ?)
+        ''', ('supervisor', 'supervisor@sistema-rutas.com', supervisor_password_hash, 'supervisor', 1))
         
-        # Crear usuario admin si no existe
-        admin = cursor.execute('SELECT id FROM users WHERE username = ?', ('admin',)).fetchone()
-        if not admin:
-            cursor.execute('''
-                INSERT INTO users (username, email, password_hash, role, is_active)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (
-                'admin', 
-                'admin@sistema-rutas.com', 
-                generate_password_hash('admin123'), 
-                'admin', 
-                1
-            ))
-            print("✅ Usuario admin creado")
+        print("✅ Usuarios por defecto creados:")
+        print("   Admin: admin / admin123")
+        print("   Supervisor: supervisor / supervisor123")
     
     conn.commit()
-    conn.close()
-
-def create_sample_data_if_needed():
-    """Función modificada para no usar datos de ejemplo y solo usar Excel"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Verificar si ya hay rutas
-    existing_routes = cursor.execute('SELECT COUNT(*) FROM rutas').fetchone()[0]
-    
-    if existing_routes == 0:
-        print("📦 No hay rutas en la base de datos")
-        print("🔍 Verificando archivo Excel...")
-        
-        if os.path.exists('DB_Rutas.xlsx'):
-            print("📊 Se encontró DB_Rutas.xlsx, se cargarán los datos ahora")
-            conn.close()  # Cerrar la conexión antes de llamar a otra función que abre la conexión
-            # Cargar datos inmediatamente desde Excel
-            if load_rutas_from_excel():
-                print("✅ Datos cargados exitosamente desde Excel")
-            else:
-                print("❌ Error al cargar datos desde Excel")
-        else:
-            print("⚠️ ADVERTENCIA: No se encontró el archivo DB_Rutas.xlsx")
-            print("⚠️ La aplicación no tendrá rutas disponibles")
-            conn.close()
-    else:
-        print(f"✅ Ya existen {existing_routes} rutas en la base de datos")
     conn.close()
 
 def load_rutas_from_excel():
     """Cargar rutas desde el archivo Excel"""
-    if not PANDAS_AVAILABLE:
-        print("❌ Pandas no está disponible. No se pueden cargar rutas desde Excel.")
-        return False
-    
-    excel_path = 'DB_Rutas.xlsx'
-    if not os.path.exists(excel_path):
-        print(f"❌ No se encontró el archivo {excel_path}")
-        return False
-        
     try:
-        print(f"📊 Cargando Excel {excel_path}...")
         # Leer el archivo Excel
-        df = pd.read_excel(excel_path)
-        
-        print(f"📋 Excel leído correctamente. Encontradas {len(df)} filas")
-        print(f"📋 Columnas en el Excel: {', '.join(df.columns.tolist())}")
-        
-        # Verificar columnas requeridas
-        required_columns = ['RUTA', 'CODIGO', 'CONTRATISTA']
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            print(f"❌ Error: Faltan columnas requeridas en el Excel: {', '.join(missing_columns)}")
-            return False
+        df = pd.read_excel('DB_Rutas.xlsx')
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -570,17 +242,16 @@ def load_rutas_from_excel():
         reportes_count = cursor.execute('SELECT COUNT(*) FROM reportes_rutas').fetchone()[0]
         
         if reportes_count > 0:
-            print(f"⚠️ Hay {reportes_count} reportes asociados a rutas.")
-            print(f"⚠️ Se procederá con la carga sin eliminar rutas existentes.")
-            # No cerramos la conexión ni retornamos False, continuamos con la importación
-        else:
-            # Limpiar tabla de rutas existente solo si no hay reportes
-            print("🔄 Limpiando rutas existentes...")
-            cursor.execute('DELETE FROM rutas')
+            print(f"⚠️ No se pueden limpiar rutas: hay {reportes_count} reportes asociados")
+            conn.close()
+            return False
+            
+        # Limpiar tabla de rutas existente
+        cursor.execute('DELETE FROM rutas')
         
         # Insertar datos desde Excel
         loaded_count = 0
-        for idx, row in df.iterrows():
+        for _, row in df.iterrows():
             try:
                 ruta = str(row['RUTA']) if pd.notna(row['RUTA']) else ''
                 codigo = str(row['CODIGO']) if pd.notna(row['CODIGO']) else ''
@@ -591,7 +262,7 @@ def load_rutas_from_excel():
                 
                 # Verificar que contratista no sea vacío (es NOT NULL)
                 if not contratista:
-                    print(f"⚠️ Fila {idx+2}: Saltando ruta sin contratista: {ruta}")
+                    print(f"⚠️ Saltando ruta sin contratista: {ruta}")
                     continue
                 
                 cursor.execute('''
@@ -600,45 +271,57 @@ def load_rutas_from_excel():
                 ''', (ruta, codigo, placa, supervisor, contratista, tipo))
                 
                 loaded_count += 1
-                if loaded_count % 50 == 0:
-                    print(f"🔄 {loaded_count} rutas procesadas...")
             except Exception as row_error:
-                print(f"⚠️ Error en fila {idx+2}: {row_error}")
+                print(f"⚠️ Error en fila {_}: {row_error}")
                 continue
         
         conn.commit()
         conn.close()
         
-        print(f"✅ {loaded_count} rutas cargadas desde Excel correctamente")
-        return loaded_count > 0
+        print(f"✅ {loaded_count} rutas cargadas desde Excel")
+        return True
         
-    except pd.errors.EmptyDataError:
-        print(f"❌ El archivo Excel {excel_path} está vacío")
-        return False
-    except pd.errors.ParserError:
-        print(f"❌ Error al parsear el Excel {excel_path}. Formato inválido.")
-        return False
     except Exception as e:
         print(f"❌ Error cargando rutas desde Excel: {e}")
-        print(f"   Tipo de error: {type(e).__name__}")
-        import traceback
-        print(traceback.format_exc())
         return False
 
 @app.route('/')
 def index():
     """Página principal con el formulario para reportar rutas"""
-    # Obtener contratistas únicos para el dropdown
-    conn = get_db_connection()
-    contratistas = conn.execute('''
-        SELECT DISTINCT contratista 
-        FROM rutas 
-        WHERE contratista != '' 
-        ORDER BY contratista
-    ''').fetchall()
-    conn.close()
-    
-    return render_template('index.html', contratistas=contratistas)
+    try:
+        # Inicializar la base de datos si no existe
+        if not os.path.exists(DATABASE):
+            init_db()
+            
+        # Verificar que existe la tabla rutas
+        conn = get_db_connection()
+        
+        # Verificar si la tabla existe
+        table_exists = conn.execute('''
+            SELECT count(name) FROM sqlite_master 
+            WHERE type='table' AND name='rutas'
+        ''').fetchone()[0]
+        
+        if table_exists == 0:
+            # La tabla no existe, inicializar la BD
+            conn.close()
+            print("⚠️ La tabla rutas no existe, inicializando base de datos...")
+            init_db()
+            conn = get_db_connection()
+        
+        # Obtener contratistas únicos para el dropdown
+        contratistas = conn.execute('''
+            SELECT DISTINCT contratista 
+            FROM rutas 
+            WHERE contratista != '' 
+            ORDER BY contratista
+        ''').fetchall()
+        conn.close()
+        
+        return render_template('index.html', contratistas=contratistas)
+    except Exception as e:
+        print(f"❌ ERROR en index(): {e}")
+        return render_template('index.html', contratistas=[])
 
 @app.route('/get_rutas/<contratista>')
 def get_rutas(contratista):
@@ -1200,45 +883,17 @@ if __name__ == '__main__':
     # Inicializar base de datos
     init_db()
     
-    # Usar la función que ya hemos mejorado para cargar desde Excel
-    create_sample_data_if_needed()
-    
-    # Verificar que el Excel existe para dar un mensaje informativo adecuado
+    # Cargar rutas desde Excel si existe el archivo
     if os.path.exists('DB_Rutas.xlsx'):
-        print("📋 Excel DB_Rutas.xlsx encontrado")
-        # Verificar que haya datos cargados
-        conn = get_db_connection()
-        rutas_count = conn.execute('SELECT COUNT(*) FROM rutas').fetchone()[0]
-        conn.close()
-        print(f"📊 Total de rutas en la base de datos: {rutas_count}")
+        print("📋 Cargando rutas desde Excel...")
+        load_rutas_from_excel()
     else:
-        print("⚠️ ARCHIVO DB_Rutas.xlsx NO ENCONTRADO")
-        print("⚠️ La aplicación NO tendrá rutas disponibles")
-        print("⚠️ Por favor, sube el archivo DB_Rutas.xlsx a Railway")
+        print("⚠️ Archivo DB_Rutas.xlsx no encontrado")
     
-    print("🌐 Aplicación lista")
-    
-    # Usar configuración dinámica de config.py
-    from config import get_config
-    
-    config_class = get_config()
-    config_instance = config_class()
-    
-    print(f"🌐 Servidor iniciando en puerto: {config_instance.PORT}")
-    print(f"🔧 Debug mode: {config_instance.DEBUG}")
-    print(f"🏠 Host: {config_instance.HOST}")
-    print(f"🌍 PORT env var: '{os.environ.get('PORT', 'NOT_SET')}'")
-    print(f"🚂 Railway env: '{os.environ.get('RAILWAY_ENVIRONMENT', 'NOT_SET')}'")
-    
-    if config_instance.DEBUG:
-        print(f"   Local: http://127.0.0.1:{config_instance.PORT}")
-        print("👤 Admin: admin / admin123")
-    else:
-        print("🚂 Modo producción activado para Railway")
+    print("🌐 Aplicación lista - puedes acceder en:")
+    port = int(os.environ.get('PORT', 5000))
+    print(f"   Local: http://127.0.0.1:{port}")
+    print("👤 Admin: admin / admin123")
     
     # Ejecutar la aplicación
-    app.run(
-        debug=config_instance.DEBUG, 
-        host=config_instance.HOST, 
-        port=config_instance.PORT
-    )
+    app.run(debug=True, host='0.0.0.0', port=port)
