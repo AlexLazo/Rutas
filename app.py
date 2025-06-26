@@ -542,10 +542,26 @@ def load_rutas_from_excel():
     if not PANDAS_AVAILABLE:
         print("❌ Pandas no está disponible. No se pueden cargar rutas desde Excel.")
         return False
+    
+    excel_path = 'DB_Rutas.xlsx'
+    if not os.path.exists(excel_path):
+        print(f"❌ No se encontró el archivo {excel_path}")
+        return False
         
     try:
+        print(f"📊 Cargando Excel {excel_path}...")
         # Leer el archivo Excel
-        df = pd.read_excel('DB_Rutas.xlsx')
+        df = pd.read_excel(excel_path)
+        
+        print(f"📋 Excel leído correctamente. Encontradas {len(df)} filas")
+        print(f"📋 Columnas en el Excel: {', '.join(df.columns.tolist())}")
+        
+        # Verificar columnas requeridas
+        required_columns = ['RUTA', 'CODIGO', 'CONTRATISTA']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            print(f"❌ Error: Faltan columnas requeridas en el Excel: {', '.join(missing_columns)}")
+            return False
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -554,16 +570,17 @@ def load_rutas_from_excel():
         reportes_count = cursor.execute('SELECT COUNT(*) FROM reportes_rutas').fetchone()[0]
         
         if reportes_count > 0:
-            print(f"⚠️ No se pueden limpiar rutas: hay {reportes_count} reportes asociados")
-            conn.close()
-            return False
-            
-        # Limpiar tabla de rutas existente
-        cursor.execute('DELETE FROM rutas')
+            print(f"⚠️ Hay {reportes_count} reportes asociados a rutas.")
+            print(f"⚠️ Se procederá con la carga sin eliminar rutas existentes.")
+            # No cerramos la conexión ni retornamos False, continuamos con la importación
+        else:
+            # Limpiar tabla de rutas existente solo si no hay reportes
+            print("🔄 Limpiando rutas existentes...")
+            cursor.execute('DELETE FROM rutas')
         
         # Insertar datos desde Excel
         loaded_count = 0
-        for _, row in df.iterrows():
+        for idx, row in df.iterrows():
             try:
                 ruta = str(row['RUTA']) if pd.notna(row['RUTA']) else ''
                 codigo = str(row['CODIGO']) if pd.notna(row['CODIGO']) else ''
@@ -574,7 +591,7 @@ def load_rutas_from_excel():
                 
                 # Verificar que contratista no sea vacío (es NOT NULL)
                 if not contratista:
-                    print(f"⚠️ Saltando ruta sin contratista: {ruta}")
+                    print(f"⚠️ Fila {idx+2}: Saltando ruta sin contratista: {ruta}")
                     continue
                 
                 cursor.execute('''
@@ -583,18 +600,29 @@ def load_rutas_from_excel():
                 ''', (ruta, codigo, placa, supervisor, contratista, tipo))
                 
                 loaded_count += 1
+                if loaded_count % 50 == 0:
+                    print(f"🔄 {loaded_count} rutas procesadas...")
             except Exception as row_error:
-                print(f"⚠️ Error en fila {_}: {row_error}")
+                print(f"⚠️ Error en fila {idx+2}: {row_error}")
                 continue
         
         conn.commit()
         conn.close()
         
-        print(f"✅ {loaded_count} rutas cargadas desde Excel")
-        return True
+        print(f"✅ {loaded_count} rutas cargadas desde Excel correctamente")
+        return loaded_count > 0
         
+    except pd.errors.EmptyDataError:
+        print(f"❌ El archivo Excel {excel_path} está vacío")
+        return False
+    except pd.errors.ParserError:
+        print(f"❌ Error al parsear el Excel {excel_path}. Formato inválido.")
+        return False
     except Exception as e:
         print(f"❌ Error cargando rutas desde Excel: {e}")
+        print(f"   Tipo de error: {type(e).__name__}")
+        import traceback
+        print(traceback.format_exc())
         return False
 
 @app.route('/')
