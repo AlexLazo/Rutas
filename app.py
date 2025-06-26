@@ -1017,4 +1017,5 @@ if __name__ == '__main__':
     print("👤 Admin: admin / admin123")
     
     # Ejecutar la aplicación
-    app.run(debug=True, host='0.0.0.0', port=port)
+    debug_mode = os.environ.get('ENVIRONMENT', 'production') != 'production'
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
