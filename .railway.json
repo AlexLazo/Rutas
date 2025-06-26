@@ -3,7 +3,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "chmod +x ./install_deps.sh && ./install_deps.sh && python3 app.py",
+    "startCommand": "chmod +x ./start_railway.sh && ./start_railway.sh",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

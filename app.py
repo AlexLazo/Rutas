@@ -97,22 +97,10 @@ def init_db():
         ))
         print("✅ Usuario admin creado")
     
-    # Crear datos de ejemplo si no hay rutas
+    # No crear datos de ejemplo, usar exclusivamente el archivo Excel
     rutas_count = cursor.execute('SELECT COUNT(*) FROM rutas').fetchone()[0]
     if rutas_count == 0:
-        # Rutas de ejemplo
-        sample_routes = [
-            ("Ruta 01", "GT001", "ABC-123", "Juan Pérez", "Transportes Guatemala", "Urbana"),
-            ("Ruta 02", "GT002", "DEF-456", "María López", "Logística Central", "Interurbana"),
-        ]
-        
-        for ruta in sample_routes:
-            cursor.execute('''
-                INSERT INTO rutas (ruta, codigo, placa, supervisor, contratista, tipo)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', ruta)
-        
-        print("✅ Datos de ejemplo creados")
+        print("🔄 La base de datos no tiene rutas, se cargarán desde Excel posteriormente")
     
     conn.commit()
     conn.close()
@@ -505,7 +493,7 @@ def init_db():
     conn.close()
 
 def create_sample_data_if_needed():
-    """Crear datos de ejemplo si la base de datos está vacía"""
+    """Función modificada para no usar datos de ejemplo y solo usar Excel"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -513,43 +501,16 @@ def create_sample_data_if_needed():
     existing_routes = cursor.execute('SELECT COUNT(*) FROM rutas').fetchone()[0]
     
     if existing_routes == 0:
-        print("📦 Creando datos de ejemplo...")
+        print("📦 No hay rutas en la base de datos")
+        print("🔍 Verificando archivo Excel...")
         
-        # Datos de ejemplo para rutas
-        sample_routes = [
-            ("Ruta 01", "GT001", "ABC-123", "Juan Pérez", "Transportes Guatemala", "Urbana"),
-            ("Ruta 02", "GT002", "DEF-456", "María López", "Logística Central", "Interurbana"),
-            ("Ruta 03", "GT003", "GHI-789", "Carlos Rodríguez", "Transportes Guatemala", "Urbana"),
-            ("Ruta 04", "GT004", "JKL-012", "Ana Martínez", "Distribución Norte", "Rural"),
-            ("Ruta 05", "GT005", "MNO-345", "Pedro Gómez", "Logística Central", "Interurbana"),
-        ]
-        
-        for ruta_data in sample_routes:
-            cursor.execute('''
-                INSERT INTO rutas (ruta, codigo, placa, supervisor, contratista, tipo)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', ruta_data)
-        
-        # Datos de ejemplo para reportes
-        sample_reports = [
-            ("Transportes Guatemala", 1, "GT001", 15, 120, "08:30:00", "Zona 10, Ciudad de Guatemala", 
-             14.6349, -90.5069, "Entrega programada para las 9:00 AM", "admin"),
-            ("Logística Central", 2, "GT002", 8, 85, "10:15:00", "Carretera a El Salvador Km 15", 
-             14.5500, -90.4000, "Ruta interurbana en progreso", "supervisor"),
-            ("Transportes Guatemala", 3, "GT003", 22, 150, "14:20:00", "Zona 7, Mixco", 
-             14.6300, -90.5400, "Segunda ronda del día", "admin"),
-        ]
-        
-        for report_data in sample_reports:
-            cursor.execute('''
-                INSERT INTO reportes_rutas 
-                (contratista, ruta_id, ruta_codigo, clientes_pendientes, cajas_camion, 
-                 hora_aproximada_ingreso, ubicacion_exacta, latitud, longitud, comentarios, reportado_por)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', report_data)
-        
-        conn.commit()
-        print("✅ Datos de ejemplo creados correctamente")
+        if os.path.exists('DB_Rutas.xlsx'):
+            print("📊 Se encontró DB_Rutas.xlsx, se cargarán los datos posteriormente")
+        else:
+            print("⚠️ ADVERTENCIA: No se encontró el archivo DB_Rutas.xlsx")
+            print("⚠️ La aplicación no tendrá rutas disponibles")
+    else:
+        print(f"✅ Ya existen {existing_routes} rutas en la base de datos")
     
     conn.close()
 
@@ -1188,12 +1149,21 @@ if __name__ == '__main__':
     # Inicializar base de datos
     init_db()
     
-    # Cargar rutas desde Excel si existe el archivo
+    # Cargar SIEMPRE rutas desde Excel (prioridad máxima)
     if os.path.exists('DB_Rutas.xlsx'):
         print("📋 Cargando rutas desde Excel...")
+        # Limpiar cualquier dato de ejemplo que pudiera existir
+        conn = sqlite3.connect(DATABASE)
+        conn.execute('DELETE FROM rutas')
+        conn.commit()
+        conn.close()
+        
+        # Cargar datos exclusivamente desde Excel
         load_rutas_from_excel()
     else:
-        print("⚠️ Archivo DB_Rutas.xlsx no encontrado")
+        print("⚠️ ARCHIVO DB_Rutas.xlsx NO ENCONTRADO")
+        print("⚠️ La aplicación NO tendrá rutas disponibles")
+        print("⚠️ Por favor, sube el archivo DB_Rutas.xlsx a Railway")
     
     print("🌐 Aplicación lista")
     
