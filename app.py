@@ -50,6 +50,10 @@ def add_security_headers(response):
     response.headers['X-Corporate-Gateway'] = 'CORP-DMZ-01'
     response.headers['X-Internal-Service'] = 'Route-Management-System'
     
+    # Headers adicionales para Render.com
+    response.headers['X-Hosting-Platform'] = 'Render-Enterprise'
+    response.headers['X-Deployment-Environment'] = 'Corporate-Cloud'
+    
     # Headers específicos para parecer legítimo
     response.headers['X-Division'] = 'Logistica-Distribucion'
     response.headers['X-Region'] = 'CENTROAMERICA'
@@ -867,10 +871,20 @@ if __name__ == '__main__':
     else:
         print("⚠️ Archivo DB_Rutas.xlsx no encontrado")
     
-    print("🌐 Aplicación lista - puedes acceder en:")
+    print("🌐 Aplicación lista")
+    
+    # Configuración para diferentes plataformas de hosting
     port = int(os.environ.get('PORT', 5000))
-    print(f"   Local: http://127.0.0.1:{port}")
-    print("👤 Admin: admin / admin123")
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    
+    print(f"🌐 Servidor iniciando en puerto: {port}")
+    print(f"🔧 Debug mode: {debug_mode}")
+    
+    if debug_mode:
+        print(f"   Local: http://127.0.0.1:{port}")
+        print("👤 Admin: admin / admin123")
+    else:
+        print("🏢 Modo producción activado para Render.com")
     
     # Ejecutar la aplicación
-    app.run(debug=True, host='0.0.0.0', port=port)
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
