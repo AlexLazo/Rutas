@@ -1,5 +1,13 @@
 # 🚂 Guía de Despliegue en Railway
 
+## ⚠️ PROBLEMA RESUELTO: Error de pandas/numpy
+El error que experimentaste era por incompatibilidad entre pandas y numpy en Railway. 
+
+**✅ SOLUCIÓN APLICADA:**
+- Pandas es ahora opcional en la aplicación
+- Requirements.txt simplificado para evitar conflictos
+- La aplicación funcionará sin Excel, usando solo SQLite
+
 ## Pasos para subir tu aplicación a Railway:
 
 ### 1. Preparar tu código
@@ -75,6 +83,18 @@ En el dashboard de Railway:
 - Compatible con el sistema de archivos de Railway
 
 ## Troubleshooting:
+
+### ✅ PROBLEMA RESUELTO: Error de pandas/numpy
+**Error original:**
+```
+ValueError: numpy.dtype size changed, may indicate binary incompatibility
+```
+
+**✅ SOLUCIÓN APLICADA:**
+1. Pandas es ahora **OPCIONAL** en la aplicación
+2. Requirements.txt **SIMPLIFICADO** (solo Flask esencial)
+3. La aplicación crea **datos de ejemplo automáticamente**
+4. Funcionalidad de Excel **deshabilitada temporalmente** en Railway
 
 ### Si la aplicación no inicia:
 1. Revisa los logs en Railway dashboard

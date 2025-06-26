@@ -3,11 +3,20 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import os
-import pandas as pd
 from datetime import datetime, time
 import json
 from functools import wraps
 from pathlib import Path
+
+# Importar pandas de manera opcional para evitar errores de Railway
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+    print("✅ Pandas importado correctamente")
+except ImportError as e:
+    PANDAS_AVAILABLE = False
+    print(f"⚠️ Pandas no disponible: {e}")
+    print("⚠️ Funciones de Excel estarán limitadas")
 
 # Importar configuración para Railway
 try:
@@ -238,10 +247,67 @@ def init_db():
         print("   Supervisor: supervisor / supervisor123")
     
     conn.commit()
+    
+    # Crear datos de ejemplo si no existen rutas
+    create_sample_data_if_needed()
+    
+    conn.close()
+
+def create_sample_data_if_needed():
+    """Crear datos de ejemplo si la base de datos está vacía"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Verificar si ya hay rutas
+    existing_routes = cursor.execute('SELECT COUNT(*) FROM rutas').fetchone()[0]
+    
+    if existing_routes == 0:
+        print("📦 Creando datos de ejemplo...")
+        
+        # Datos de ejemplo para rutas
+        sample_routes = [
+            ("Ruta 01", "GT001", "ABC-123", "Juan Pérez", "Transportes Guatemala", "Urbana"),
+            ("Ruta 02", "GT002", "DEF-456", "María López", "Logística Central", "Interurbana"),
+            ("Ruta 03", "GT003", "GHI-789", "Carlos Rodríguez", "Transportes Guatemala", "Urbana"),
+            ("Ruta 04", "GT004", "JKL-012", "Ana Martínez", "Distribución Norte", "Rural"),
+            ("Ruta 05", "GT005", "MNO-345", "Pedro Gómez", "Logística Central", "Interurbana"),
+        ]
+        
+        for ruta_data in sample_routes:
+            cursor.execute('''
+                INSERT INTO rutas (ruta, codigo, placa, supervisor, contratista, tipo)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', ruta_data)
+        
+        # Datos de ejemplo para reportes
+        sample_reports = [
+            ("Transportes Guatemala", 1, "GT001", 15, 120, "08:30:00", "Zona 10, Ciudad de Guatemala", 
+             14.6349, -90.5069, "Entrega programada para las 9:00 AM", "admin"),
+            ("Logística Central", 2, "GT002", 8, 85, "10:15:00", "Carretera a El Salvador Km 15", 
+             14.5500, -90.4000, "Ruta interurbana en progreso", "supervisor"),
+            ("Transportes Guatemala", 3, "GT003", 22, 150, "14:20:00", "Zona 7, Mixco", 
+             14.6300, -90.5400, "Segunda ronda del día", "admin"),
+        ]
+        
+        for report_data in sample_reports:
+            cursor.execute('''
+                INSERT INTO reportes_rutas 
+                (contratista, ruta_id, ruta_codigo, clientes_pendientes, cajas_camion, 
+                 hora_aproximada_ingreso, ubicacion_exacta, latitud, longitud, comentarios, reportado_por)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', report_data)
+        
+        conn.commit()
+        print("✅ Datos de ejemplo creados correctamente")
+    
     conn.close()
 
 def load_rutas_from_excel():
     """Cargar rutas desde el archivo Excel"""
+    if not PANDAS_AVAILABLE:
+        print("❌ Pandas no está disponible. No se pueden cargar rutas desde Excel.")
+        return False
+        
     try:
         # Leer el archivo Excel
         df = pd.read_excel('DB_Rutas.xlsx')
