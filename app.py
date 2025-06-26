@@ -388,9 +388,7 @@ def submit_reporte():
         cursor = conn.cursor()
         
         # Obtener fecha y hora actual del servidor con ajuste de zona horaria (GMT-6 para Centroamérica)
-        import pytz
-        zona_horaria = pytz.timezone('America/Guatemala')  # Guatemala usa GMT-6, ajustar si es necesario
-        ahora = datetime.now(zona_horaria)
+        ahora = get_now()
         fecha_actual = ahora.strftime('%Y-%m-%d')
         
         # Formato de hora y fecha completa para la hora exacta de envío
@@ -839,9 +837,6 @@ def api_reportes():
 def crear_reporte_prueba():
     """Crear un reporte de prueba para verificar el panel de administración"""
     try:
-        import pytz
-        zona_horaria = pytz.timezone('America/Guatemala')
-        
         conn = get_db_connection()
         
         # Obtener una ruta existente
@@ -854,7 +849,7 @@ def crear_reporte_prueba():
         
         # Insertar reporte de prueba
         cursor = conn.cursor()
-        ahora = datetime.now(zona_horaria)
+        ahora = get_now()
         fecha_actual = ahora.strftime('%Y-%m-%d')
         hora_actual = ahora.strftime('%H:%M')
         hora_exacta_envio = ahora.strftime('%Y-%m-%d %H:%M:%S')
@@ -933,7 +928,8 @@ def eliminar_reporte(reporte_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
-    print("🚀 Iniciando Sistema de Gestión de Rutas...")
+    now = get_now()
+    print(f"🚀 Iniciando Sistema de Gestión de Rutas... [{now.strftime('%Y-%m-%d %H:%M:%S')} GMT-6]")
     print(f"📂 Base de datos: {DATABASE}")
     
     # Inicializar base de datos

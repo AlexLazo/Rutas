@@ -250,6 +250,7 @@
                             <small class="text-primary">
                                 <i class="fas fa-paper-plane me-1"></i>
                                 {{ reporte.hora_exacta_envio.split(' ')[1] if reporte.hora_exacta_envio else 'No registrada' }}
+                                <span class="badge bg-light text-dark">GMT-6</span>
                             </small>
                         </td>
                         <td>
@@ -452,7 +453,7 @@ function verDetalles(reporteId) {
                         <li><strong>Clientes Pendientes:</strong> ${fila.cells[4].textContent}</li>
                         <li><strong>Cajas en Camión:</strong> ${fila.cells[5].textContent}</li>
                         <li><strong>Hora de Ingreso:</strong> ${fila.cells[6].textContent}</li>
-                        <li><strong>Hora Exacta de Envío:</strong> <span class='text-primary'>${horaExacta}</span></li>
+                        <li><strong>Hora Exacta de Envío:</strong> <span class='text-primary'>${horaExacta}</span> <span class='badge bg-light text-dark'>GMT-6</span></li>
                         <li><strong>Reportado Por:</strong> ${fila.cells[9].textContent}</li>
                         <li><strong>Fecha/Hora:</strong> ${fila.cells[10].textContent}</li>
                     </ul>
