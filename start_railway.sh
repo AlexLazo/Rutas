@@ -22,7 +22,38 @@ fi
 echo "🚀 Ejecutando aplicación con Gunicorn..."
 python3 -c "import os; print(f'Python version: {os.popen(\"python3 --version\").read().strip()}')"
 python3 -c "import pandas; print(f'Pandas version: {pandas.__version__}')"
-echo "🔄 Iniciando app.py directamente para asegurar carga de datos..."
+echo "🔄 Inicializando base de datos antes de arrancar..."
+python3 -c "
+import sqlite3;
+import os;
+print('Inicializando base de datos...');
+conn = sqlite3.connect('sistema_rutas.db');
+conn.executescript('''
+CREATE TABLE IF NOT EXISTS rutas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ruta TEXT NOT NULL,
+    codigo TEXT,
+    placa TEXT,
+    supervisor TEXT,
+    contratista TEXT NOT NULL,
+    tipo TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS reportes_rutas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ruta_id INTEGER NOT NULL,
+    fecha TEXT, 
+    hora TEXT,
+    descripcion TEXT,
+    estado TEXT,
+    usuario_reporte TEXT,
+    FOREIGN KEY (ruta_id) REFERENCES rutas (id)
+);
+''');
+conn.commit();
+conn.close();
+print('✅ Base de datos inicializada correctamente');
+"
 
 # Para Railway, usamos Gunicorn para servir la aplicación
-exec gunicorn app:app --bind 0.0.0.0:$PORT --workers=1 --timeout=120 --preload
+exec gunicorn app:app --bind 0.0.0.0:$PORT --workers=1 --timeout=120
