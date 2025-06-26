@@ -8,13 +8,10 @@ Se han implementado mejoras de seguridad en el sistema para facilitar su aprobac
    - Limita de dónde puede cargar recursos la página
    - Protege contra ataques XSS
 
-2. **Subresource Integrity (SRI)**
-   - Verifica que los scripts externos no han sido manipulados
-   - Añade una capa adicional de seguridad
-
-3. **Mejoras en Headers de Seguridad**
-   - HSTS preload para forzar HTTPS
+2. **Mejoras en Headers de Seguridad**
+   - HSTS para forzar HTTPS
    - Ajustes de referrer policy y opciones de framing
+   - X-Content-Type-Options para prevenir MIME sniffing
 
 ## Pasos para solicitar la excepción al firewall
 

@@ -32,8 +32,7 @@ La aplicación ha sido evaluada por el escáner de seguridad Mozilla Observatory
 - Puntuación actual: B (70/100)
 - Se han implementado las siguientes mejoras de seguridad:
   * Content Security Policy (CSP)
-  * Subresource Integrity (SRI) para scripts externos
-  * HTTPS obligatorio con HSTS preload
+  * HTTPS obligatorio con HSTS
   * X-Frame-Options establecido a SAMEORIGIN
   * X-Content-Type-Options establecido a nosniff
   * Referrer-Policy establecido a strict-origin-when-cross-origin
