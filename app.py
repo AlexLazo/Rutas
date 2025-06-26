@@ -108,10 +108,6 @@ def init_db():
 app = Flask(__name__)
 app.secret_key = 'clave-secreta-rutas-2024'  # Cambiar en producción
 
-# Inicializar la base de datos inmediatamente al arrancar
-print("🔄 Inicializando base de datos al arrancar...")
-init_db()
-
 # Configurar Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -526,13 +522,19 @@ def create_sample_data_if_needed():
         print("🔍 Verificando archivo Excel...")
         
         if os.path.exists('DB_Rutas.xlsx'):
-            print("📊 Se encontró DB_Rutas.xlsx, se cargarán los datos posteriormente")
+            print("📊 Se encontró DB_Rutas.xlsx, se cargarán los datos ahora")
+            conn.close()  # Cerrar la conexión antes de llamar a otra función que abre la conexión
+            # Cargar datos inmediatamente desde Excel
+            if load_rutas_from_excel():
+                print("✅ Datos cargados exitosamente desde Excel")
+            else:
+                print("❌ Error al cargar datos desde Excel")
         else:
             print("⚠️ ADVERTENCIA: No se encontró el archivo DB_Rutas.xlsx")
             print("⚠️ La aplicación no tendrá rutas disponibles")
+            conn.close()
     else:
         print(f"✅ Ya existen {existing_routes} rutas en la base de datos")
-    
     conn.close()
 
 def load_rutas_from_excel():
@@ -1170,17 +1172,17 @@ if __name__ == '__main__':
     # Inicializar base de datos
     init_db()
     
-    # Cargar SIEMPRE rutas desde Excel (prioridad máxima)
+    # Usar la función que ya hemos mejorado para cargar desde Excel
+    create_sample_data_if_needed()
+    
+    # Verificar que el Excel existe para dar un mensaje informativo adecuado
     if os.path.exists('DB_Rutas.xlsx'):
-        print("📋 Cargando rutas desde Excel...")
-        # Limpiar cualquier dato de ejemplo que pudiera existir
-        conn = sqlite3.connect(DATABASE)
-        conn.execute('DELETE FROM rutas')
-        conn.commit()
+        print("📋 Excel DB_Rutas.xlsx encontrado")
+        # Verificar que haya datos cargados
+        conn = get_db_connection()
+        rutas_count = conn.execute('SELECT COUNT(*) FROM rutas').fetchone()[0]
         conn.close()
-        
-        # Cargar datos exclusivamente desde Excel
-        load_rutas_from_excel()
+        print(f"📊 Total de rutas en la base de datos: {rutas_count}")
     else:
         print("⚠️ ARCHIVO DB_Rutas.xlsx NO ENCONTRADO")
         print("⚠️ La aplicación NO tendrá rutas disponibles")
