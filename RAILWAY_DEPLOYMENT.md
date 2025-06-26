@@ -2,23 +2,21 @@
 
 ## ✅ **ARCHIVOS PREPARADOS PARA RAILWAY:**
 
-- ✅ `Procfile` - Comando de inicio: `python railway_start.py`
-- ✅ `railway_start.py` - Script robusto que maneja variables de entorno
-- ✅ `railway_config.py` - Configuración específica para Railway
-- ✅ `railway_fix.py` - **NUEVO:** Módulo especializado para corregir el error `$PORT`
-- ✅ `railway_check.py` - **NUEVO:** Script de diagnóstico para entorno Railway
-- ✅ `railway_verify.py` - **NUEVO:** Verificación local antes del deploy
+- ✅ `Procfile` - Comando de inicio: `python railway_simple.py`
+- ✅ `railway_simple.py` - **NUEVO:** Script híbrido simple que maneja el error `$PORT`
 - ✅ `requirements.txt` - Sin pandas (solo Flask + dependencias ligeras)
 - ✅ `runtime.txt` - Python 3.11.8
 
-## 🔧 **SOLUCIÓN DEFINITIVA AL ERROR '$PORT':**
+## 🔧 **SOLUCIÓN SIMPLE AL ERROR '$PORT':**
 
-El error `'$PORT' is not a valid port number` se solucionó con:
+**PROBLEMA:** Railway a veces pasa literalmente la cadena `'$PORT'` en lugar de un número de puerto.
 
-1. **Módulo especializado `railway_fix.py`** que maneja explícitamente el valor literal `$PORT`
-2. **Script robusto `railway_start.py`** actualizado para usar solución reforzada
-3. **Validación estricta** del puerto con múltiples comprobaciones
-4. **Diagnóstico integrado** con `railway_check.py`
+**SOLUCIÓN:** El nuevo script `railway_simple.py` hace esto:
+
+1. **Detecta** si `PORT='$PORT'` (string literal)
+2. **Usa puerto 5000** como respaldo si hay cualquier error
+3. **Funciona** tanto en desarrollo como en Railway
+4. **Es simple** - solo 50 líneas de código fáciles de entender
 
 ### 🆕 **NOTA ESPECIAL: $PORT LITERAL**
 
@@ -37,16 +35,22 @@ La solución implementada ahora:
 
 ## 🚀 **PASOS PARA DEPLOYMENT:**
 
-### 1. **Verificación local y subir cambios:**
+### 1. **Cambios ya aplicados:**
 ```bash
-# Verificar que todo está correcto antes de subir
-python railway_verify.py
-
-# Subir cambios a GitHub
-git add .
-git commit -m "Fix: Solución definitiva para error $PORT en Railway"
-git push origin main
+✅ Archivos actualizados y subidos a GitHub
+✅ Procfile configurado para usar railway_simple.py
+✅ Script híbrido que maneja el error $PORT
 ```
+
+### 2. **En Railway.app:**
+- **Ir a tu proyecto** en Railway
+- **Forzar redeploy** (Deployments → Redeploy)
+- **Verificar logs** - debería mostrar algo como:
+  ```
+  🔍 Variable PORT detectada: '$PORT'
+  ⚠️ PORT es literalmente '$PORT', usando 5000
+  🚀 Iniciando app en puerto: 5000
+  ```
 
 ### 2. **En Railway.app:**
 - **New Project** → **Deploy from GitHub repo**
@@ -108,21 +112,27 @@ Después del deployment en Railway:
 4. **Probar** localmente: `python railway_start.py`
 5. **Verificar puertos** disponibles con `railway_check.py`
 
-## 🔍 **LOGS ESPERADOS:**
+## 🔍 **LOGS ESPERADOS EN RAILWAY:**
 
 ```
-🚂 Iniciando aplicación en Railway...
-⚠️ PORT era '$PORT', establecida a 5000
-🚂 Detectado Railway - Modo producción activado
-✅ Variables de entorno configuradas para Railway
-🚀 Iniciando Sistema de Gestión de Rutas...
-🔄 Inicializando base de datos en: sistema_rutas.db
-✅ Usuarios por defecto creados:
-   Admin: admin / admin123
-   Supervisor: supervisor / supervisor123
-🌐 Servidor iniciando en puerto: 5000
-🔧 Debug mode: False
-🏢 Modo producción activado para Railway
+� Variable PORT detectada: '8080' (o cualquier número que Railway asigne)
+✅ Usando puerto Railway: 8080
+🚀 Iniciando app en puerto: 8080
+ * Serving Flask app 'app'
+ * Debug mode: off
+ * Running on all addresses (0.0.0.0)
+ * Running on http://0.0.0.0:8080
+```
+
+**O si hay error con $PORT:**
+```
+🔍 Variable PORT detectada: '$PORT'
+⚠️ PORT es literalmente '$PORT', usando 5000
+🚀 Iniciando app en puerto: 5000
+ * Serving Flask app 'app'
+ * Debug mode: off
+ * Running on all addresses (0.0.0.0)
+ * Running on http://0.0.0.0:5000
 ```
 
 ## 📈 **PRÓXIMOS PASOS:**
