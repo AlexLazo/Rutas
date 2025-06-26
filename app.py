@@ -9,6 +9,7 @@ import json
 from functools import wraps
 from pathlib import Path
 import pytz
+from flask_cors import CORS  # Add CORS support
 
 def get_now():
     """
@@ -18,6 +19,7 @@ def get_now():
     return datetime.now(pytz.timezone('America/Guatemala'))
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 app.secret_key = 'clave-secreta-rutas-2024'  # Cambiar en producción
 
 # Headers de seguridad para parecer sitio web corporativo normal
@@ -948,6 +950,16 @@ def eliminar_reporte(reporte_id):
     except Exception as e:
         print(f"Error eliminando reporte: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/health')
+def health_check():
+    """Endpoint simple para verificar que la app está funcionando"""
+    return jsonify({
+        "status": "ok",
+        "timestamp": get_now().strftime('%Y-%m-%d %H:%M:%S'),
+        "timezone": "America/Guatemala (GMT-6)",
+        "environment": os.environ.get('ENVIRONMENT', 'production')
+    })
 
 if __name__ == '__main__':
     now = get_now()

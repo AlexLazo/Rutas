@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sistema de Rutas - Redirector</title>
+    <meta http-equiv="refresh" content="0;url=https://formulario-rutas.up.railway.app/">
+    <script>
+        // Will try to redirect to either the custom domain or the Railway domain
+        window.onload = function() {
+            // Try primary domain first, fallback to Railway domain
+            fetch('https://formulario-rutas.lat/health')
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = 'https://formulario-rutas.lat/';
+                    }
+                })
+                .catch(() => {
+                    // Fallback to Railway domain
+                    window.location.href = 'https://formulario-rutas.up.railway.app/';
+                });
+        }
+    </script>
+</head>
+<body>
+    <h1>Redirecting to Sistema de Rutas...</h1>
+    <p>If you are not redirected automatically, click the links below:</p>
+    <p>
+        <a href="https://formulario-rutas.lat/">Dominio Principal</a><br>
+        <a href="https://formulario-rutas.up.railway.app/">Dominio Alternativo</a>
+    </p>
+    <p>
+        <small>El sistema y la base de datos se ejecutan en Railway. Este es solo un redireccionador.</small>
+    </p>
+</body>
+</html>
