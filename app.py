@@ -9,6 +9,13 @@ import json
 from functools import wraps
 from pathlib import Path
 
+# Importar configuración para Railway
+try:
+    from railway_config import get_port, get_debug_mode, print_env_info
+    RAILWAY_CONFIG_AVAILABLE = True
+except ImportError:
+    RAILWAY_CONFIG_AVAILABLE = False
+
 app = Flask(__name__)
 app.secret_key = 'clave-secreta-rutas-2024'  # Cambiar en producción
 
@@ -873,12 +880,30 @@ if __name__ == '__main__':
     
     print("🌐 Aplicación lista")
     
-    # Configuración para diferentes plataformas de hosting
-    port = int(os.environ.get('PORT', 5000))
-    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    # Usar configuración de Railway si está disponible
+    if RAILWAY_CONFIG_AVAILABLE:
+        print("🚂 Usando configuración de Railway")
+        print_env_info()
+        port = get_port()
+        debug_mode = get_debug_mode()
+    else:
+        # Configuración manual para diferentes plataformas de hosting
+        try:
+            port_env = os.environ.get('PORT', '5000')
+            # Manejar casos donde PORT viene como string literal '$PORT'
+            if port_env == '$PORT' or not port_env.isdigit():
+                port = 5000
+            else:
+                port = int(port_env)
+        except (ValueError, TypeError):
+            port = 5000
+        
+        debug_mode = os.environ.get('FLASK_ENV') != 'production'
     
     print(f"🌐 Servidor iniciando en puerto: {port}")
     print(f"🔧 Debug mode: {debug_mode}")
+    print(f"🌍 PORT env var: '{os.environ.get('PORT', 'NOT_SET')}'")
+    print(f"🌍 FLASK_ENV: '{os.environ.get('FLASK_ENV', 'NOT_SET')}'")
     
     if debug_mode:
         print(f"   Local: http://127.0.0.1:{port}")
