@@ -25,8 +25,259 @@ try:
 except ImportError:
     RAILWAY_CONFIG_AVAILABLE = False
 
+# Definir ruta de base de datos
+DATABASE = 'sistema_rutas.db'
+
+def init_db():
+    """Inicializar la base de datos"""
+    print(f"🔄 Inicializando base de datos en: {DATABASE}")
+    
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    
+    # Configurar SQLite para mejor rendimiento
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.execute("PRAGMA temp_store=MEMORY")
+    
+    # Crear tablas
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS rutas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ruta TEXT NOT NULL,
+            codigo TEXT,
+            placa TEXT,
+            supervisor TEXT,
+            contratista TEXT NOT NULL,
+            tipo TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reportes_rutas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ruta_id INTEGER NOT NULL,
+            fecha TEXT, 
+            hora TEXT,
+            descripcion TEXT,
+            estado TEXT,
+            usuario_reporte TEXT,
+            FOREIGN KEY (ruta_id) REFERENCES rutas (id)
+        )
+    ''')
+    
+    # Crear tabla usuarios si no existe
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user',
+            is_active INTEGER DEFAULT 1,
+            last_login DATETIME,
+            created_by INTEGER
+        )
+    ''')
+    
+    # Crear usuario admin si no existe
+    admin = cursor.execute('SELECT id FROM users WHERE username = ?', ('admin',)).fetchone()
+    if not admin:
+        cursor.execute('''
+            INSERT INTO users (username, email, password_hash, role, is_active)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (
+            'admin', 
+            'admin@sistema-rutas.com', 
+            generate_password_hash('admin123'), 
+            'admin', 
+            1
+        ))
+        print("✅ Usuario admin creado")
+    
+    # Crear datos de ejemplo si no hay rutas
+    rutas_count = cursor.execute('SELECT COUNT(*) FROM rutas').fetchone()[0]
+    if rutas_count == 0:
+        # Rutas de ejemplo
+        sample_routes = [
+            ("Ruta 01", "GT001", "ABC-123", "Juan Pérez", "Transportes Guatemala", "Urbana"),
+            ("Ruta 02", "GT002", "DEF-456", "María López", "Logística Central", "Interurbana"),
+        ]
+        
+        for ruta in sample_routes:
+            cursor.execute('''
+                INSERT INTO rutas (ruta, codigo, placa, supervisor, contratista, tipo)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', ruta)
+        
+        print("✅ Datos de ejemplo creados")
+    
+    conn.commit()
+    conn.close()
+    print("✅ Base de datos inicializada")
+
 app = Flask(__name__)
 app.secret_key = 'clave-secreta-rutas-2024'  # Cambiar en producción
+
+# Inicializar la base de datos inmediatamente al arrancar
+print("🔄 Inicializando base de datos al arrancar...")
+init_db()
+
+# Inicializar la base de datos inmediatamente
+DATABASE = 'sistema_rutas.db'
+
+def init_db():
+    """Inicializar la base de datos"""
+    print(f"🔄 Inicializando base de datos en: {DATABASE}")
+    
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    
+    # Configurar SQLite para mejor rendimiento
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.execute("PRAGMA temp_store=MEMORY")
+    
+    # Tabla para almacenar datos de rutas (cargados desde Excel)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS rutas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ruta TEXT NOT NULL,
+            codigo TEXT,
+            placa TEXT,
+            supervisor TEXT,
+            contratista TEXT NOT NULL,
+            tipo TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Tabla para reportes de rutas diarios
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reportes_rutas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ruta_id INTEGER NOT NULL,
+            fecha TEXT, 
+            hora TEXT,
+            descripcion TEXT,
+            estado TEXT,
+            usuario_reporte TEXT,
+            FOREIGN KEY (ruta_id) REFERENCES rutas (id)
+        )
+    ''')
+    
+    # Verificar si existe la tabla de reportes_rutas y corregir estructura si es necesario
+    reportes_exists = cursor.execute(
+        'SELECT COUNT(*) FROM sqlite_master WHERE type="table" AND name="reportes_rutas"'
+    ).fetchone()[0]
+    
+    if reportes_exists:
+        # Intentar corregir la estructura solo si existe la tabla pero hay error
+        try:
+            cursor.execute('SELECT ruta_id, fecha, hora FROM reportes_rutas LIMIT 1')
+        except sqlite3.OperationalError:
+            print("⚠️ Estructura de reportes_rutas incorrecta, recreando...")
+            cursor.execute('DROP TABLE reportes_rutas')
+            cursor.execute('''
+                CREATE TABLE reportes_rutas (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ruta_id INTEGER NOT NULL,
+                    fecha TEXT, 
+                    hora TEXT,
+                    descripcion TEXT,
+                    estado TEXT,
+                    usuario_reporte TEXT,
+                    FOREIGN KEY (ruta_id) REFERENCES rutas (id)
+                )
+            ''')
+    
+    # Crear usuario administrador por defecto si no existe
+    existing_admin = cursor.execute(
+        'SELECT COUNT(*) FROM sqlite_master WHERE type="table" AND name="users"'
+    ).fetchone()[0]
+    
+    if not existing_admin:
+        # Crear tabla de usuarios
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                email TEXT,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user'
+            )
+        ''')
+        
+        # Crear usuarios por defecto
+        admin_password_hash = generate_password_hash('admin123')
+        cursor.execute('''
+            INSERT INTO users (username, email, password_hash, role)
+            VALUES (?, ?, ?, ?)
+        ''', ('admin', 'admin@sistema-rutas.com', admin_password_hash, 'admin'))
+        
+        # Crear supervisor de ejemplo
+        supervisor_password_hash = generate_password_hash('supervisor123')
+        cursor.execute('''
+            INSERT INTO users (username, email, password_hash, role)
+            VALUES (?, ?, ?, ?)
+        ''', ('supervisor', 'supervisor@sistema-rutas.com', supervisor_password_hash, 'supervisor'))
+        
+        print("✅ Usuarios por defecto creados")
+    
+    # Crear datos de ejemplo si no hay rutas
+    routes_count = cursor.execute('SELECT COUNT(*) FROM rutas').fetchone()[0]
+    if routes_count == 0:
+        print("📦 Creando rutas de ejemplo...")
+        
+        # Datos de ejemplo para rutas
+        sample_routes = [
+            ("Ruta 01", "GT001", "ABC-123", "Juan Pérez", "Transportes Guatemala", "Urbana"),
+            ("Ruta 02", "GT002", "DEF-456", "María López", "Logística Central", "Interurbana"),
+            ("Ruta 03", "GT003", "GHI-789", "Carlos Rodríguez", "Transportes Guatemala", "Urbana"),
+            ("Ruta 04", "GT004", "JKL-012", "Ana Martínez", "Distribución Norte", "Rural"),
+            ("Ruta 05", "GT005", "MNO-345", "Pedro Gómez", "Logística Central", "Interurbana"),
+        ]
+        
+        for ruta_data in sample_routes:
+            cursor.execute('''
+                INSERT INTO rutas (ruta, codigo, placa, supervisor, contratista, tipo)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', ruta_data)
+        
+        # Datos de ejemplo para reportes
+        sample_reports = [
+            (1, "2024-01-15", "08:30", "Entrega completada sin problemas", "completado", "admin"),
+            (2, "2024-01-15", "10:15", "Retraso por tráfico", "en-proceso", "supervisor"),
+            (3, "2024-01-15", "14:20", "Ruta iniciada correctamente", "en-proceso", "admin"),
+        ]
+        
+        for report_data in sample_reports:
+            cursor.execute('''
+                INSERT INTO reportes_rutas 
+                (ruta_id, fecha, hora, descripcion, estado, usuario_reporte)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', report_data)
+        
+        print("✅ Datos de ejemplo creados correctamente")
+    
+    conn.commit()
+    conn.close()
+    print("✅ Base de datos inicializada correctamente")
+
+# Ejecutar inicialización de base de datos
+print("🚀 Iniciando aplicación...")
+init_db()
+print("✅ Base de datos preparada")
+
+def get_db_connection():
+    """Obtener conexión a la base de datos"""
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
+    return conn
 
 # Headers de seguridad para parecer sitio web corporativo normal
 @app.after_request
