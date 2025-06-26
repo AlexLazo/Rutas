@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte de Rutas - Sistema de Gestión{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <div class="header-section">
+        <h1><i class="fas fa-truck me-3"></i>Reporte de Rutas</h1>
+        <p>Sistema de Gestión y Control de Rutas de Distribución</p>
+    </div>
+    
+    <div class="form-section">
+        <form id="rutaForm">
+            <div class="row">
+                <!-- Contratista -->
+                <div class="col-md-6 mb-3">
+                    <label for="contratista" class="form-label">
+                        <i class="fas fa-user-tie me-2"></i>Contratista
+                    </label>
+                    <select class="form-select" id="contratista" name="contratista" required>
+                        <option value="">Seleccione un contratista...</option>
+                        {% for contratista in contratistas %}
+                            <option value="{{ contratista.contratista }}">{{ contratista.contratista }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Ruta -->
+                <div class="col-md-6 mb-3">
+                    <label for="ruta" class="form-label">
+                        <i class="fas fa-route me-2"></i>Ruta
+                    </label>
+                    <select class="form-select" id="ruta" name="ruta" required disabled>
+                        <option value="">Primero seleccione un contratista</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Información adicional de la ruta -->
+            <div id="rutaInfo" class="alert alert-info" style="display: none;">
+                <h6><i class="fas fa-info-circle me-2"></i>Información de la Ruta</h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Supervisor:</strong> <span id="rutaSupervisor">-</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Placa:</strong> <span id="rutaPlaca">-</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Tipo:</strong> <span id="rutaTipo">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <!-- Clientes Pendientes -->
+                <div class="col-md-4 mb-3">
+                    <label for="clientes_pendientes" class="form-label">
+                        <i class="fas fa-users me-2"></i>Clientes Pendientes de Visitar
+                    </label>
+                    <input type="number" class="form-control" id="clientes_pendientes" 
+                           name="clientes_pendientes" min="0" required>
+                </div>
+                
+                <!-- Cajas en Camión -->
+                <div class="col-md-4 mb-3">
+                    <label for="cajas_camion" class="form-label">
+                        <i class="fas fa-boxes me-2"></i>Cajas en el Camión
+                    </label>
+                    <input type="number" class="form-control" id="cajas_camion" 
+                           name="cajas_camion" min="0" required>
+                </div>
+                
+                <!-- Hora Aproximada de Ingreso -->
+                <div class="col-md-4 mb-3">
+                    <label for="hora_aproximada_ingreso" class="form-label">
+                        <i class="fas fa-clock me-2"></i>Hora Aproximada de Ingreso
+                    </label>
+                    <div class="time-input-container">
+                        <input type="time" class="form-control" id="hora_aproximada_ingreso" 
+                               name="hora_aproximada_ingreso" required>
+                        <span class="input-group-text">
+                            <i class="fas fa-clock"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Comentarios -->
+            <div class="mb-3">
+                <label for="comentarios" class="form-label">
+                    <i class="fas fa-comment me-2"></i>Comentarios (Opcional)
+                </label>
+                <textarea class="form-control" id="comentarios" name="comentarios" 
+                          rows="3" placeholder="Ingrese comentarios adicionales..."></textarea>
+            </div>
+            
+            <!-- Reportado por -->
+            <div class="mb-4">
+                <label for="reportado_por" class="form-label">
+                    <i class="fas fa-user me-2"></i>Reportado por
+                </label>
+                <input type="text" class="form-control" id="reportado_por" 
+                       name="reportado_por" placeholder="Nombre de quien reporta">
+            </div>
+            
+            <!-- Campos ocultos para ubicación -->
+            <input type="hidden" id="latitud" name="latitud">
+            <input type="hidden" id="longitud" name="longitud">
+            <input type="hidden" id="ubicacion_exacta" name="ubicacion_exacta">
+            
+            <!-- Información de ubicación -->
+            <div class="alert alert-info" id="ubicacionInfo" style="display: none;">
+                <h6><i class="fas fa-map-marker-alt me-2"></i>Ubicación Detectada</h6>
+                <p class="mb-0" id="ubicacionTexto">Obteniendo ubicación...</p>
+            </div>
+            
+            <!-- Botón Submit -->
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-paper-plane me-2"></i>
+                    Enviar Reporte
+                    <div class="loading-spinner spinner-border spinner-border-sm ms-2" role="status">
+                        <span class="visually-hidden">Enviando...</span>
+                    </div>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de Confirmación -->
+<div class="modal fade" id="confirmacionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle me-2"></i>Reporte Enviado
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h4>¡Reporte enviado exitosamente!</h4>
+                <p class="mb-0">Su reporte ha sido registrado en el sistema.</p>
+                <p><strong>ID del Reporte:</strong> <span id="reporteId">-</span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="location.reload()">
+                    Crear Nuevo Reporte
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Obtener ubicación automáticamente al cargar la página
+    if (navigator.geolocation) {
+        $('#ubicacionInfo').show();
+        $('#ubicacionTexto').text('Obteniendo ubicación exacta...');
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                $('#latitud').val(lat);
+                $('#longitud').val(lng);
+                
+                // Obtener dirección usando reverse geocoding (opcional)
+                if (typeof google !== 'undefined' && google.maps) {
+                    const geocoder = new google.maps.Geocoder();
+                    const latlng = new google.maps.LatLng(lat, lng);
+                    
+                    geocoder.geocode({'location': latlng}, function(results, status) {
+                        if (status === 'OK' && results[0]) {
+                            const direccion = results[0].formatted_address;
+                            $('#ubicacion_exacta').val(direccion);
+                            $('#ubicacionTexto').html(`<strong>Ubicación:</strong> ${direccion}`);
+                        } else {
+                            $('#ubicacion_exacta').val(`${lat}, ${lng}`);
+                            $('#ubicacionTexto').html(`<strong>Coordenadas:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                        }
+                    });
+                } else {
+                    $('#ubicacion_exacta').val(`${lat}, ${lng}`);
+                    $('#ubicacionTexto').html(`<strong>Coordenadas:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                }
+            },
+            function(error) {
+                console.log('Error obteniendo ubicación:', error);
+                $('#ubicacion_exacta').val('No disponible - ' + error.message);
+                $('#ubicacionTexto').html(`<span class="text-warning"><strong>Ubicación no disponible:</strong> ${error.message}</span>`);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000
+            }
+        );
+    } else {
+        $('#ubicacion_exacta').val('Geolocalización no soportada');
+        $('#ubicacionInfo').show();
+        $('#ubicacionTexto').html(`<span class="text-warning"><strong>Geolocalización no soportada</strong> por este navegador</span>`);
+    }
+    // Cargar rutas cuando se selecciona un contratista
+    $('#contratista').change(function() {
+        const contratista = $(this).val();
+        const rutaSelect = $('#ruta');
+        const rutaInfo = $('#rutaInfo');
+        
+        if (contratista) {
+            // Mostrar loading
+            rutaSelect.html('<option value="">Cargando rutas...</option>').prop('disabled', true);
+            rutaInfo.hide();
+            
+            // Cargar rutas del contratista
+            $.get(`/get_rutas/${encodeURIComponent(contratista)}`)
+                .done(function(rutas) {
+                    rutaSelect.empty().append('<option value="">Seleccione una ruta...</option>');
+                    
+                    if (rutas.length > 0) {
+                        rutas.forEach(function(ruta) {
+                            rutaSelect.append(`<option value="${ruta.id}" 
+                                data-supervisor="${ruta.supervisor || ''}" 
+                                data-placa="${ruta.placa || ''}" 
+                                data-tipo="${ruta.tipo || ''}"
+                                data-codigo="${ruta.codigo || ''}">${ruta.ruta} (${ruta.codigo || 'Sin código'})</option>`);
+                        });
+                        rutaSelect.prop('disabled', false);
+                    } else {
+                        rutaSelect.append('<option value="">No hay rutas disponibles</option>');
+                    }
+                })
+                .fail(function() {
+                    rutaSelect.html('<option value="">Error cargando rutas</option>');
+                    alert('Error al cargar las rutas. Por favor, intente de nuevo.');
+                });
+        } else {
+            rutaSelect.html('<option value="">Primero seleccione un contratista</option>').prop('disabled', true);
+            rutaInfo.hide();
+        }
+    });
+    
+    // Mostrar información de la ruta seleccionada
+    $('#ruta').change(function() {
+        const selectedOption = $(this).find('option:selected');
+        const rutaInfo = $('#rutaInfo');
+        
+        if (selectedOption.val()) {
+            $('#rutaSupervisor').text(selectedOption.data('supervisor') || 'No asignado');
+            $('#rutaPlaca').text(selectedOption.data('placa') || 'No asignada');
+            $('#rutaTipo').text(selectedOption.data('tipo') || 'No especificado');
+            rutaInfo.show();
+        } else {
+            rutaInfo.hide();
+        }
+    });
+    
+    // Manejar envío del formulario
+    $('#rutaForm').submit(function(e) {
+        e.preventDefault();
+        
+        const submitBtn = $(this).find('button[type="submit"]');
+        const spinner = submitBtn.find('.loading-spinner');
+        
+        // Validar campos requeridos
+        const requiredFields = ['contratista', 'ruta', 'clientes_pendientes', 'cajas_camion', 'hora_aproximada_ingreso'];
+        let isValid = true;
+        
+        requiredFields.forEach(function(field) {
+            const fieldElement = $(`#${field}`);
+            if (!fieldElement.val()) {
+                fieldElement.addClass('is-invalid');
+                isValid = false;
+            } else {
+                fieldElement.removeClass('is-invalid');
+            }
+        });
+        
+        if (!isValid) {
+            alert('Por favor complete todos los campos requeridos');
+            return;
+        }
+        
+        // Deshabilitar botón y mostrar spinner
+        submitBtn.prop('disabled', true);
+        spinner.show();
+        
+        // Preparar datos
+        const formData = {
+            contratista: $('#contratista').val(),
+            ruta_id: $('#ruta').val(),
+            clientes_pendientes: parseInt($('#clientes_pendientes').val()),
+            cajas_camion: parseInt($('#cajas_camion').val()),
+            hora_aproximada_ingreso: $('#hora_aproximada_ingreso').val(),
+            comentarios: $('#comentarios').val(),
+            reportado_por: $('#reportado_por').val(),
+            ubicacion_exacta: $('#ubicacion_exacta').val() || 'No disponible',
+            latitud: $('#latitud').val() || null,
+            longitud: $('#longitud').val() || null
+        };
+        
+        // Enviar datos
+        $.ajax({
+            url: '/submit_reporte',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function(response) {
+                if (response.success) {
+                    $('#reporteId').text(response.reporte_id);
+                    $('#confirmacionModal').modal('show');
+                    
+                    // Limpiar formulario
+                    $('#rutaForm')[0].reset();
+                    $('#ruta').html('<option value="">Primero seleccione un contratista</option>').prop('disabled', true);
+                    $('#rutaInfo').hide();
+                } else {
+                    alert('Error: ' + response.error);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                alert('Error enviando reporte: ' + (response ? response.error : 'Error desconocido'));
+            },
+            complete: function() {
+                // Rehabilitar botón y ocultar spinner
+                submitBtn.prop('disabled', false);
+                spinner.hide();
+            }
+        });
+    });
+    
+    // Establecer hora actual por defecto
+    const now = new Date();
+    const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
+                      now.getMinutes().toString().padStart(2, '0');
+    $('#hora_aproximada_ingreso').val(timeString);
+    
+    // Validación en tiempo real
+    $('.form-control, .form-select').on('input change', function() {
+        $(this).removeClass('is-invalid');
+    });
+});
+</script>
+{% endblock %}

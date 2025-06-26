@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión - Sistema de Rutas{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="main-container">
+                <div class="header-section">
+                    <h1><i class="fas fa-lock me-3"></i>Iniciar Sesión</h1>
+                    <p>Panel de Administración - Sistema de Rutas</p>
+                </div>
+                
+                <div class="form-section">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">
+                                <i class="fas fa-user me-2"></i>Usuario
+                            </label>
+                            <input type="text" class="form-control" id="username" name="username" 
+                                   required autofocus placeholder="Ingrese su usuario">
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="password" class="form-label">
+                                <i class="fas fa-key me-2"></i>Contraseña
+                            </label>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   required placeholder="Ingrese su contraseña">
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>
+                                Iniciar Sesión
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <h6 class="text-muted">Credenciales por defecto:</h6>
+                        <small class="text-muted">
+                            <strong>Admin:</strong> admin / admin123<br>
+                            <strong>Supervisor:</strong> supervisor / supervisor123
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Focus en el campo de usuario
+    $('#username').focus();
+    
+    // Validación del formulario
+    $('form').submit(function(e) {
+        const username = $('#username').val().trim();
+        const password = $('#password').val().trim();
+        
+        if (!username || !password) {
+            e.preventDefault();
+            alert('Por favor complete todos los campos');
+            return false;
+        }
+        
+        // Mostrar loading en el botón
+        const submitBtn = $(this).find('button[type="submit"]');
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Iniciando sesión...');
+    });
+});
+</script>
+{% endblock %}
