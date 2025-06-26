@@ -8,6 +8,7 @@ from datetime import datetime, time
 import json
 from functools import wraps
 from pathlib import Path
+import pytz
 
 app = Flask(__name__)
 app.secret_key = 'clave-secreta-rutas-2024'  # Cambiar en producción
@@ -121,6 +122,10 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
+
+def get_now():
+    """Obtener la hora actual en la zona horaria de Centroamérica (Guatemala)"""
+    return datetime.now(pytz.timezone('America/Guatemala'))
 
 def init_db():
     """Inicializar la base de datos"""
@@ -382,8 +387,10 @@ def submit_reporte():
         # Insertar reporte
         cursor = conn.cursor()
         
-        # Obtener fecha y hora actual del servidor
-        ahora = datetime.now()
+        # Obtener fecha y hora actual del servidor con ajuste de zona horaria (GMT-6 para Centroamérica)
+        import pytz
+        zona_horaria = pytz.timezone('America/Guatemala')  # Guatemala usa GMT-6, ajustar si es necesario
+        ahora = datetime.now(zona_horaria)
         fecha_actual = ahora.strftime('%Y-%m-%d')
         
         # Formato de hora y fecha completa para la hora exacta de envío
@@ -445,7 +452,7 @@ def submit_reporte():
 def admin():
     """Panel de administración para ver reportes de rutas"""
     # Obtener fecha actual o la fecha del filtro si se proporciona
-    fecha_actual = datetime.now().strftime('%Y-%m-%d')
+    fecha_actual = get_now().strftime('%Y-%m-%d')
     fecha_filtro = request.args.get('fecha', fecha_actual)
     contratista_filtro = request.args.get('contratista', '')
     
@@ -605,7 +612,7 @@ def export_reportes():
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill, Alignment
         
-        fecha_filtro = request.args.get('fecha', datetime.now().strftime('%Y-%m-%d'))
+        fecha_filtro = request.args.get('fecha', get_now().strftime('%Y-%m-%d'))
         
         conn = get_db_connection()
         reportes = conn.execute('''
@@ -802,7 +809,7 @@ def reload_rutas():
 @app.route('/api/reportes')
 def api_reportes():
     """API para obtener reportes"""
-    fecha = request.args.get('fecha', datetime.now().strftime('%Y-%m-%d'))
+    fecha = request.args.get('fecha', get_now().strftime('%Y-%m-%d'))
     contratista = request.args.get('contratista', '')
     
     conn = get_db_connection()
@@ -832,6 +839,9 @@ def api_reportes():
 def crear_reporte_prueba():
     """Crear un reporte de prueba para verificar el panel de administración"""
     try:
+        import pytz
+        zona_horaria = pytz.timezone('America/Guatemala')
+        
         conn = get_db_connection()
         
         # Obtener una ruta existente
@@ -844,8 +854,10 @@ def crear_reporte_prueba():
         
         # Insertar reporte de prueba
         cursor = conn.cursor()
-        fecha_actual = datetime.now().strftime('%Y-%m-%d')
-        hora_actual = datetime.now().strftime('%H:%M')
+        ahora = datetime.now(zona_horaria)
+        fecha_actual = ahora.strftime('%Y-%m-%d')
+        hora_actual = ahora.strftime('%H:%M')
+        hora_exacta_envio = ahora.strftime('%Y-%m-%d %H:%M:%S')
         
         cursor.execute('''
             INSERT INTO reportes_rutas 
@@ -864,7 +876,7 @@ def crear_reporte_prueba():
             'Ubicación de prueba',
             10.123456,
             -84.123456,
-            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            hora_exacta_envio,
             'Reporte de prueba creado automáticamente',
             current_user.username,
             fecha_actual
