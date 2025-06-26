@@ -381,8 +381,13 @@ def submit_reporte():
         
         # Insertar reporte
         cursor = conn.cursor()
-        fecha_actual = datetime.now().strftime('%Y-%m-%d')
-        hora_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Obtener fecha y hora actual del servidor
+        ahora = datetime.now()
+        fecha_actual = ahora.strftime('%Y-%m-%d')
+        
+        # Formato de hora y fecha completa para la hora exacta de envío
+        hora_actual = ahora.strftime('%Y-%m-%d %H:%M:%S')
         
         cursor.execute('''
             INSERT INTO reportes_rutas 
@@ -401,7 +406,7 @@ def submit_reporte():
             data.get('ubicacion_exacta', ''),
             data.get('latitud'),
             data.get('longitud'),
-            hora_actual,  # Hora exacta de envío
+            hora_actual,  # Hora exacta de envío (formato completo)
             data.get('comentarios', ''),
             data.get('reportado_por', 'Sistema'),
             fecha_actual,  # Fecha de reporte explícita
@@ -875,6 +880,45 @@ def crear_reporte_prueba():
     except Exception as e:
         flash(f'Error al crear reporte de prueba: {str(e)}', 'error')
         return redirect(url_for('admin'))
+
+@app.route('/eliminar_reporte/<int:reporte_id>', methods=['DELETE'])
+@login_required
+@require_role('admin')
+def eliminar_reporte(reporte_id):
+    """Eliminar un reporte de ruta"""
+    try:
+        conn = get_db_connection()
+        
+        # Verificar que el reporte existe
+        reporte = conn.execute('SELECT id, ruta_codigo, contratista FROM reportes_rutas WHERE id = ?', (reporte_id,)).fetchone()
+        
+        if not reporte:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Reporte no encontrado'}), 404
+        
+        # Eliminar el reporte
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM reportes_rutas WHERE id = ?', (reporte_id,))
+        conn.commit()
+        conn.close()
+        
+        # Registrar la eliminación en el log de actividades
+        log_activity(
+            current_user.id, 
+            'eliminar_reporte', 
+            'reporte', 
+            reporte_id, 
+            f'Eliminó reporte #{reporte_id} - {reporte["ruta_codigo"]} ({reporte["contratista"]})'
+        )
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Reporte #{reporte_id} eliminado correctamente'
+        })
+        
+    except Exception as e:
+        print(f"Error eliminando reporte: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("🚀 Iniciando Sistema de Gestión de Rutas...")
