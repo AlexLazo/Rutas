@@ -51,10 +51,10 @@ def add_security_headers(response):
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
     
-    # Content Security Policy (CSP) - Configurado para permitir CDNs necesarios
+    # Content Security Policy (CSP) - Configurado para mejor seguridad
     csp_directives = [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com", 
+        "script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com", 
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
         "img-src 'self' data:",
         "font-src 'self' https://cdnjs.cloudflare.com",
@@ -62,7 +62,8 @@ def add_security_headers(response):
         "frame-ancestors 'self'",
         "form-action 'self'",
         "base-uri 'self'",
-        "object-src 'none'"
+        "object-src 'none'",
+        "upgrade-insecure-requests"
     ]
     response.headers['Content-Security-Policy'] = "; ".join(csp_directives)
     
