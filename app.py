@@ -20,7 +20,7 @@ except ImportError as e:
 
 # Importar configuración para Railway
 try:
-    from railway_config import get_port, get_debug_mode, print_env_info
+    from config import get_port, get_debug_mode, print_env_info
     RAILWAY_CONFIG_AVAILABLE = True
 except ImportError:
     RAILWAY_CONFIG_AVAILABLE = False
