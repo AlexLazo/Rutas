@@ -49,7 +49,22 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
+    
+    # Content Security Policy (CSP) - Agregado para mejorar puntuación de seguridad
+    csp_directives = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'", 
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        "font-src 'self'",
+        "connect-src 'self'",
+        "frame-ancestors 'self'",
+        "form-action 'self'",
+        "base-uri 'self'",
+        "object-src 'none'"
+    ]
+    response.headers['Content-Security-Policy'] = "; ".join(csp_directives)
     
     # Headers que hacen parecer un sistema empresarial INTERNO
     response.headers['X-Enterprise-System'] = 'Sistema-Gestion-Rutas'

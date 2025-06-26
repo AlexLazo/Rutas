@@ -1,0 +1,66 @@
+SOLICITUD DE EXCEPCIÓN DE FIREWALL
+SISTEMA DE GESTIÓN DE RUTAS
+=======================================
+
+INFORMACIÓN DEL SISTEMA
+----------------------
+Nombre: Sistema de Gestión de Rutas
+URL principal: https://formulario-rutas.lat
+URL alternativa: https://formulario-rutas.up.railway.app
+Departamento: Logística y Distribución
+Fecha: 26 de Junio de 2025
+
+JUSTIFICACIÓN DE NEGOCIO
+------------------------
+El Sistema de Gestión de Rutas es una aplicación crítica para las operaciones diarias de distribución y logística. Esta herramienta permite:
+
+1. Registrar en tiempo real el progreso de las rutas de distribución
+2. Monitorear la ubicación de las unidades de distribución
+3. Gestionar eficientemente los tiempos de entrega y recepción
+4. Asegurar la correcta distribución de productos a clientes
+
+ALCANCE E IMPACTO
+----------------
+- Aproximadamente 200 usuarios móviles acceden diariamente al sistema
+- Personal de campo necesita reportar el estado de rutas en tiempo real
+- Sin acceso al sistema, se pierde visibilidad de la operación logística
+- No es posible planificar eficientemente las rutas y horarios de distribución
+
+ANÁLISIS DE SEGURIDAD
+--------------------
+La aplicación ha sido evaluada por el escáner de seguridad Mozilla Observatory:
+- Puntuación actual: B (70/100)
+- Se han implementado las siguientes mejoras de seguridad:
+  * Content Security Policy (CSP)
+  * Subresource Integrity (SRI) para scripts externos
+  * HTTPS obligatorio con HSTS preload
+  * X-Frame-Options establecido a SAMEORIGIN
+  * X-Content-Type-Options establecido a nosniff
+  * Referrer-Policy establecido a strict-origin-when-cross-origin
+
+IMPACTO EN EL NEGOCIO SI NO SE APRUEBA
+-------------------------------------
+1. Imposibilidad de realizar seguimiento de rutas en tiempo real
+2. Incremento en tiempos de entrega por falta de coordinación
+3. Posibles entregas no realizadas o fuera de tiempo
+4. Reducción en la eficiencia operativa
+5. Insatisfacción de clientes por retrasos en entregas
+6. Pérdida de visibilidad sobre las operaciones de campo
+
+DATOS TÉCNICOS ADICIONALES
+-------------------------
+- Alojamiento: Railway (PaaS seguro)
+- Protocolo: HTTPS con certificado válido
+- Tipo de aplicación: Sistema interno de gestión logística
+- Tipo de datos: Información operativa no sensible
+- No se maneja información financiera ni datos personales sensibles
+
+AUTORIZACIÓN
+-----------
+Solicitante: ____________________________
+Cargo: ________________________________
+Fecha: ________________________________
+
+Gerente que autoriza: ___________________
+Cargo: ________________________________
+Fecha: ________________________________

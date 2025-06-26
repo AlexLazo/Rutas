@@ -15,7 +15,6 @@ Instrucciones:
 
 from flask import Flask, request, Response, session
 import requests
-from requests_toolbelt.adapters.source import SourceAddressAdapter
 import urllib.parse
 
 app = Flask(__name__)
